@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SDL.h>
+#include <chrono>
 
 struct SDL_Params
 {
@@ -17,6 +18,7 @@ struct SDL_Params
 
     SDL_Event event;
     Uint64 frameStart, frameTime, frameDelay, frameCount;
+    std::chrono::system_clock::time_point start;
 
     SDL_PixelFormatEnum format;
     SDL_TextureAccess access;
@@ -34,8 +36,13 @@ void Finalize(SDL_Window*& window, SDL_Renderer*& renderer, SDL_Texture*& textur
 void EventProcess(SDL_Params* params);
 void UpdateProcess(SDL_Params* params);
 void RenderProcess(SDL_Params* params);
-void ControlFrameRateProcess(SDL_Params* params);
+void ControlFrameRateProcess(SDL_Params* params, bool checkTime);
 
 void FillBuffer(Uint8* buffer, int x, int y, int w, int h, Uint8 r, Uint8 g, Uint8 b, Uint8 a);
+void DrawPoint(SDL_Params* params);
 void DrawLine(SDL_Params* params);
+
 void GetError(int err, const char* msg, int nline);
+void setElapsedTime(std::chrono::system_clock::time_point& start);
+void getElapsedTime(const char* msg, std::chrono::system_clock::time_point& start, bool restart = false);
+

@@ -3,8 +3,9 @@
 
 int main(int argc, char* argv[])
 {
-    SDL_Log("==== SDL_START ====");
+    SDL_Log("==== PROGRAM_START ====");
     SDL_Params params;
+    bool checkTime = false;
 
     try
     {
@@ -13,6 +14,7 @@ int main(int argc, char* argv[])
         while (params.isRunning)
         {
             params.frameStart = SDL_GetTicks64();
+            setElapsedTime(params.start);
 
             // Get Event
             EventProcess(&params);
@@ -24,7 +26,8 @@ int main(int argc, char* argv[])
             RenderProcess(&params);
 
             // Control frame rate
-            ControlFrameRateProcess(&params);
+            ControlFrameRateProcess(&params, checkTime);
+            
         }
 
         // Finalized
@@ -36,7 +39,7 @@ int main(int argc, char* argv[])
         printf("%s\n", err.c_str());
     }
 
-    SDL_Log("==== SDL_END ====");
+    SDL_Log("==== PROGRAM_END ====");
     return 0;
 }
 

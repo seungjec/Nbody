@@ -74,7 +74,7 @@ void EventProcess(SDL_Params* params)
             break;
         case SDLK_SPACE:
             params->key_space_down = true;
-            SDL_Log("Space key down\n");
+            //SDL_Log("Space key down\n");
             break;
         }
         break;
@@ -83,7 +83,7 @@ void EventProcess(SDL_Params* params)
         {
         case SDLK_SPACE:
             params->key_space_down = false;
-            SDL_Log("Space key up\n");
+            //SDL_Log("Space key up\n");
             break;
         }
         break;
@@ -94,7 +94,7 @@ void EventProcess(SDL_Params* params)
         {
         case SDL_BUTTON_LEFT:
             params->mouse_clicked = true;
-            SDL_Log("Mouse Left button Down\n");
+            //SDL_Log("Mouse Left button Down\n");
             SDL_GetMouseState(&params->mouse_position.x, &params->mouse_position.y);
             params->last_position = params->mouse_position;
             break;
@@ -105,13 +105,16 @@ void EventProcess(SDL_Params* params)
         {
         case SDL_BUTTON_LEFT:
             params->mouse_clicked = false;
-            SDL_Log("Mouse Left button Up\n");
+            //SDL_Log("Mouse Left button Up\n");
             break;
         }
         break;
     case SDL_MOUSEMOTION:
         if (params->mouse_clicked)
+        {
             SDL_GetMouseState(&params->mouse_position.x, &params->mouse_position.y);
+            //SDL_Log("%d, %d", params->mouse_position.x, params->mouse_position.y);
+        }
         break;
     }
 }
@@ -124,14 +127,9 @@ void UpdateProcess(SDL_Params* params)
         if (SDL_LockTexture(params->textureBackground, NULL, (void**)&params->buffer, &pitch) != 0)
             GetError(-1, __FUNCTION__, __LINE__);
 
-        if (params->mouse_position.x >= 0 && params->mouse_position.x < params->window_w &&
-            params->mouse_position.y >= 0 && params->mouse_position.y < params->window_h)
-        {
-            params->buffer[params->mouse_position.x * 4 + 0 + params->window_w * 4 * params->mouse_position.y] = 255;
-            params->buffer[params->mouse_position.x * 4 + 1 + params->window_w * 4 * params->mouse_position.y] = 255;
-            params->buffer[params->mouse_position.x * 4 + 2 + params->window_w * 4 * params->mouse_position.y] = 255;
-            DrawLine(params);
-        }
+        DrawPoint(params);
+        DrawLine(params);
+
         SDL_UnlockTexture(params->textureBackground);
         params->last_position = params->mouse_position;
     }
@@ -144,7 +142,6 @@ void UpdateProcess(SDL_Params* params)
 
         memset(params->buffer, 0, params->buffer_size);
         SDL_UnlockTexture(params->textureBackground);
-
     }
 }
 
@@ -155,20 +152,36 @@ void RenderProcess(SDL_Params* params)
     SDL_RenderPresent(params->renderer);
 }
 
-void ControlFrameRateProcess(SDL_Params* params)
+void ControlFrameRateProcess(SDL_Params* params, bool checkTime)
 {
     params->frameTime = SDL_GetTicks64() - params->frameStart;
+    if (checkTime)
+        getElapsedTime("Before Delay", params->start);
+
     if (params->frameDelay > params->frameTime)
         SDL_Delay(Uint32(params->frameDelay - params->frameTime));
     ++params->frameCount;
+
+    if (checkTime)
+        getElapsedTime("After  Delay", params->start);
 }
 
 void FillBuffer(Uint8* buffer, int x, int y, int w, int h, Uint8 r, Uint8 g, Uint8 b, Uint8 a)
 {
-    buffer[4 * x + 0 + 4 * w * y] = r;
-    buffer[4 * x + 1 + 4 * w * y] = g;
-    buffer[4 * x + 2 + 4 * w * y] = b;
-    buffer[4 * x + 3 + 4 * w * y] = a;
+    if (x >= 0 && x < w &&
+        y >= 0 && y < h)
+    {
+        buffer[4 * x + 0 + 4 * w * y] = r;
+        buffer[4 * x + 1 + 4 * w * y] = g;
+        buffer[4 * x + 2 + 4 * w * y] = b;
+        buffer[4 * x + 3 + 4 * w * y] = a;
+    }
+}
+
+void DrawPoint(SDL_Params* params)
+{
+    FillBuffer(params->buffer, params->mouse_position.x, params->mouse_position.y, params->window_w, params->window_h, 255, 255, 255, 255);
+
 }
 
 void DrawLine(SDL_Params* params)
@@ -179,10 +192,6 @@ void DrawLine(SDL_Params* params)
     int y2 = params->mouse_position.y;
     int w = params->window_w;
     int h = params->window_h;
-
-    if (x1 < 0  || y1 < 0  || x2 < 0  || y2 < 0 ||
-        x1 >= w || y1 >= h || x2 >= w || y2 >= h)
-        return;
 
     float a = params->window_h;
     float b = 0;
@@ -203,11 +212,7 @@ void DrawLine(SDL_Params* params)
             {
                 int x = x1 + direction * i;
                 int y = (int)round(a * x + b);
-                if (y < 0 || y >= params->window_h)
-                {
-                    printf("[Error] y = ax + b\n");
-                    continue;
-                }
+
                 FillBuffer(params->buffer, x, y, params->window_w, params->window_h, 255, 255, 255, 255);
             }
         }
@@ -227,11 +232,7 @@ void DrawLine(SDL_Params* params)
             {
                 int y = y1 + direction * i;
                 int x = (int)round(c * y + d);
-                if (x < 0 || x >= params->window_w)
-                {
-                    printf("[Error] x = cy + d\n");
-                    continue;
-                }
+
                 FillBuffer(params->buffer, x, y, params->window_w, params->window_h, 255, 255, 255, 255);
             }
         }
@@ -242,4 +243,19 @@ void GetError(int err, const char* msg, int nline)
 {
     if (err != 0)
         throw std::string{ std::format("error : {} [{}] - {}", msg, nline, SDL_GetError()) };
+}
+
+void setElapsedTime(std::chrono::system_clock::time_point& start)
+{
+    start = std::chrono::system_clock::now();
+}
+
+void getElapsedTime(const char* msg, std::chrono::system_clock::time_point& start, bool restart)
+{
+    std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+    std::chrono::microseconds usec = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+    printf("%s : %.03f msec\n", msg, (float)usec.count() / 1000.f);
+
+    if (restart)
+        start = std::chrono::system_clock::now();
 }
