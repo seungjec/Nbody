@@ -31,7 +31,7 @@ int main(int argc, char* argv[])
         }
 
         // Finalized
-        Finalize(params.window, params.renderer, params.textureBackground);
+        Finalize(&params);
 
     }
     catch (const std::string& err)
